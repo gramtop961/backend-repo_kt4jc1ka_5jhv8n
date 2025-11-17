@@ -1,48 +1,82 @@
 """
-Database Schemas
+Database Schemas for The Gilded Gaze
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a collection in MongoDB. The collection name is the lowercase of the class name.
 """
-
+from typing import Optional, List
 from pydantic import BaseModel, Field
-from typing import Optional
 
-# Example schemas (replace with your own):
 
-class User(BaseModel):
+class Config(BaseModel):
     """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
+    Global site configuration
+    Collection: "config"
     """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    limited_edition_active: bool = Field(False, description="Whether Celestial Gaze launch is active")
+    limited_edition_name: str = Field("Celestial Gaze", description="Limited edition display name")
+
+
+class Collection(BaseModel):
+    """
+    Product collections (e.g., Core, Celestial Gaze)
+    Collection: "collection"
+    """
+    handle: str = Field(..., description="URL-safe handle, e.g., 'core' or 'celestial-gaze'")
+    title: str = Field(..., description="Display title")
+    description: Optional[str] = Field(None, description="Marketing description")
+    is_limited: bool = Field(False, description="Whether this is a limited edition collection")
+
 
 class Product(BaseModel):
     """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
+    Products (individual lash clusters and bundles)
+    Collection: "product"
     """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    title: str
+    subtitle: Optional[str] = None
+    description: Optional[str] = None
+    price: float = Field(..., ge=0)
+    compare_at_price: Optional[float] = Field(None, ge=0, description="Original price for discounts")
+    collection_handle: str = Field(..., description="Handle of parent collection")
+    image: Optional[str] = Field(None, description="Image URL")
+    limited_badge: Optional[str] = Field(None, description="Badge text like 'Limited Edition'")
+    is_bundle: bool = Field(False, description="True if this is a bundle product")
 
-# Add your own schemas here:
-# --------------------------------------------------
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Inventory(BaseModel):
+    """
+    Inventory tracking per product
+    Collection: "inventory"
+    """
+    product_id: str = Field(..., description="Stringified ObjectId of product")
+    quantity: int = Field(..., ge=0)
+
+
+class Review(BaseModel):
+    """
+    Customer reviews
+    Collection: "review"
+    """
+    product_id: str
+    author: str
+    rating: int = Field(..., ge=1, le=5)
+    content: str
+
+
+class OrderItem(BaseModel):
+    product_id: str
+    title: str
+    price: float
+    quantity: int = Field(..., ge=1)
+
+
+class Order(BaseModel):
+    """
+    Orders (simple mock checkout)
+    Collection: "order"
+    """
+    items: List[OrderItem]
+    subtotal: float
+    email: str
+    name: Optional[str] = None
+    address: Optional[str] = None
